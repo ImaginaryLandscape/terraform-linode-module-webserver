@@ -1,7 +1,17 @@
+locals {
+  ssh_keys = [
+    for value in toset(var.authorized_keys) : chomp(file(value))    
+  ]
+}
 
-resource "linode_sshkey" "mykey" {
-  label   = "My SSH key"
-  ssh_key = chomp(file(var.public_key_path))
+locals {
+  ssh_keys_str = join("\n\n", local.ssh_keys)
+}
+
+resource "linode_sshkey" "authKeys" {
+  for_each        = toset(local.ssh_keys)
+  label           = "Initial deploy SSH key"
+  ssh_key         = each.value
 }
 
 resource "linode_instance" "web" {
@@ -11,23 +21,50 @@ resource "linode_instance" "web" {
   region          = var.region
   type            = var.instance_type
   backups_enabled = var.backups_enabled
-  authorized_keys = [linode_sshkey.mykey.ssh_key]
-  root_pass       = random_string.password.result #var.root_password
+  authorized_keys = local.ssh_keys
+  root_pass       = random_string.password.result
   group           = var.group
   tags            = var.tags
   private_ip      = true
 
   connection {
-    type = "ssh"
-    user = "root"
-    # password = var.root_password
+    type     = "ssh"
+    user     = "root"
     password = random_string.password.result
     host     = self.ip_address
   }
 
-  # provisioner "file" {
-  #   source      = "setup_script.sh"
-  #   destination = "/tmp/setup_script.sh"
+  provisioner "file" {
+    source      = "sshd_public_key_only.conf"
+    destination = "/etc/ssh/sshd_config.d/sshd_public_key_only.conf"
+  }
+
+  provisioner "file" {
+    source      = "access_setup.sh"
+    destination = "/tmp/access_setup.sh"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "sudo chmod +x /tmp/access_setup.sh",
+      "sudo sh /tmp/access_setup.sh -u ${var.admin_user} -k '${local.ssh_keys_str}'",
+      "sudo bash -c \"echo '${var.admin_user}:${random_string.password.result}' | sudo chpasswd\"",
+    ]
+  }
+
+  # provisioner "remote-exec" {
+  #   inline = [
+  #     # add imagescape user
+  #     "sudo addgroup worker",
+  #     "sudo useradd -d /home/imagescape -s /bin/bash -G sudo,worker -s /bin/bash imagescape",
+  #     "sudo bash -c \"echo 'imagescape:${random_string.password.result}' | sudo chpasswd\"",
+  #     "sudo mkdir /home/imagescape /home/imagescape/.ssh/",
+  #     "sudo bash -c \"echo '${local.ssh_keys_str}' >> /home/imagescape/.ssh/authorized_keys\" ",
+  #     "sudo chown -R imagescape:imagescape /home/imagescape",
+  #     "sudo chmod 700 /home/imagescape/.ssh/",
+  #     "sudo chmod 600 /home/imagescape/.ssh/authorized_keys",
+  #     "sudo service sshd restart"
+  #    ]
   # }
 
   # provisioner "remote-exec" {

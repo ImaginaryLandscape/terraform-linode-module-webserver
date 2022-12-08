@@ -1,8 +1,9 @@
-variable "public_key_path" {}
-variable "root_password" {}
+variable "authorized_keys" {}
+variable "admin_user" {}
 variable "region" {}
 variable "node_count" {}
 variable "instance_type" {}
+
 resource "random_string" "password" {
   length  = 64
   special = true
@@ -10,6 +11,7 @@ resource "random_string" "password" {
   lower   = true
   number  = true
 }
+
 variable "backups_enabled" {
   type    = bool
   default = false
@@ -43,6 +45,7 @@ variable "SITE" {
   description = "Site name of the project/app."
   default     = ""
 }
+
 variable "ID" {
   description = "Id of the release, usually an int."
   type        = number

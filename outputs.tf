@@ -7,3 +7,6 @@ output "web_linode_ids" {
 output "web_servers_public_ips" {
   value = linode_instance.web.*.ip_address
 }
+output "web_servers_passwd" {
+  value = random_string.password.result
+}
