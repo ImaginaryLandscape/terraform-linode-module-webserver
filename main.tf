@@ -1,6 +1,6 @@
 locals {
   ssh_keys = [
-    for value in toset(var.authorized_keys) : chomp(file(value))    
+    for value in toset(var.authorized_keys) : chomp(file(value))
   ]
 }
 
@@ -44,12 +44,12 @@ resource "linode_instance" "web" {
     destination = "/tmp/access_setup.sh"
   }
 
-    provisioner "file" {
+  provisioner "file" {
     source      = "user.txt"
     destination = "/tmp/user.txt"
   }
 
-   provisioner "file" {
+  provisioner "file" {
     source      = "useradd.sh"
     destination = "/tmp/useradd.sh"
   }
@@ -60,7 +60,10 @@ resource "linode_instance" "web" {
       "sudo sh /tmp/access_setup.sh -u ${var.admin_user} -k '${local.ssh_keys_str}'",
       "sudo bash -c \"echo '${var.admin_user}:${random_string.password.result}' | sudo chpasswd\"",
       "service sshd restart",
-      "sudo hostnamectl set-hostname '${var.SITE}-web${var.ID + count.index}.${var.DOMAIN}'" 
+      "sudo hostnamectl set-hostname '${var.SITE}-web${var.ID + count.index}.${var.DOMAIN}'",
+      "if [ ${var.create_users} = true ]; then sudo chmod +x /tmp/useradd.sh; fi",
+      "if [ ${var.create_users} = true ]; then sudo bash /tmp/useradd.sh; fi",
+      "if [ ${var.create_users} = true ]; then service sshd restart; fi"
     ]
   }
 

@@ -18,5 +18,7 @@ module "webserver" {
   SITE              = var.SITE
   ID                = var.ID
   DOMAIN            = var.DOMAIN
+  backups_enabled   = var.linode_web_instance_backups_enabled
+  create_users      = var.create_users
 }
 ```
